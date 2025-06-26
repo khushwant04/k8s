@@ -33,9 +33,8 @@ helm upgrade --install apisix apisix/apisix \
   --set rbac.create=true \
   --set serviceAccount.create=true \
   --set metrics.serviceMonitor.enabled=true \
-  --set apisix.admin.credentials.admin=YOUR_ADMIN_KEY \
-  --set apisix.admin.credentials.viewer=YOUR_VIEWER_KEY \
-  --set apisix.admin.allow.ipList='{127.0.0.1/24,10.0.0.0/8}' \
+  --set apisix.admin.credentials.admin=buEivK9I3QuxMqzG9RFp6Ku6npY2TMlJfFu7WdtPGYk= \
+  --set apisix.admin.credentials.viewer=RojXLPsO3vCvs3NAnR+V3iw2k4vPfh1IL+bHG3SEvSg= \
   --set service.type=LoadBalancer
 ```
 
