@@ -1,0 +1,26 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: apisix-gateway-ingress
+  namespace: apisix
+  annotations:
+    kubernetes.io/ingress.global-static-ip-name: "apisix-ip"
+    kubernetes.io/ingress.class: "gce"
+    cert-manager.io/cluster-issuer: "letsencrypt-cloudflare-issuer"
+    kubernetes.io/ingress.allow-http: "false"
+spec:
+  tls:
+  - hosts:
+    - api.hexelstudio.com
+    secretName: apisix-gateway-tls
+  rules:
+  - host: api.hexelstudio.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: apisix-gateway
+            port:
+              number: 80

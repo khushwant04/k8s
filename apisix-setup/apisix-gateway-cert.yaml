@@ -1,0 +1,14 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: apisix-gateway-cert
+  namespace: apisix
+spec:
+  secretName: apisix-gateway-tls
+  duration: 2160h # 90 days
+  renewBefore: 360h # 15 days
+  dnsNames:
+  - api.hexelstudio.com
+  issuerRef:
+    name: letsencrypt-cloudflare-issuer
+    kind: ClusterIssuer
