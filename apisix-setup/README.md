@@ -35,7 +35,7 @@ helm upgrade --install apisix apisix/apisix \
   --set metrics.serviceMonitor.enabled=true \
   --set apisix.admin.credentials.admin=buEivK9I3QuxMqzG9RFp6Ku6npY2TMlJfFu7WdtPGYk= \
   --set apisix.admin.credentials.viewer=RojXLPsO3vCvs3NAnR+V3iw2k4vPfh1IL+bHG3SEvSg= \
-  --set service.type=LoadBalancer
+  --set service.type=ClusterIP
 ```
 
 ## 4. Verify
