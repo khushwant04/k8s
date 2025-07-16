@@ -26,7 +26,7 @@ helm upgrade --install apisix apisix/apisix \
   --create-namespace \
   --namespace apisix \
   --set replicaCount=1 \
-  --set etcd.replicaCount=1 \
+  --set etcd.replicaCount=3 \
   --set dashboard.enabled=true \
   --set ingress-controller.enabled=true \
   --set ingress-controller.config.apisix.serviceNamespace=apisix \
