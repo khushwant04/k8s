@@ -444,6 +444,90 @@ sudo journalctl -u kubelet -f
 sudo crictl ps
 ```
 
+---
+
+## ARM64-Specific Issues
+
+### Issue: exec format error
+
+**Symptoms:**
+```
+standard_init_linux.go:228: exec user process caused: exec format error
+```
+
+**Cause:** Container image doesn't support ARM64 architecture
+
+**Solutions:**
+
+1. **Verify image supports ARM64**
+   ```bash
+   # Check image manifest
+   docker manifest inspect <image> | grep arm64
+   
+   # Or use crane
+   crane manifest <image> | jq '.manifests[].platform'
+   ```
+
+2. **Use multi-arch images**
+   
+   | Safe Images | Source |
+   |-------------|--------|
+   | nginx | Official |
+   | hashicorp/* | HashiCorp |
+   | bitnami/* | Bitnami |
+   | gcr.io/k8s-staging-* | Kubernetes |
+
+3. **Build ARM64 image yourself**
+   ```bash
+   docker buildx build --platform linux/arm64 -t myimage:arm64 .
+   ```
+
+---
+
+### Issue: Image stuck in ImagePullBackOff (ARM)
+
+**Symptoms:**
+```
+Warning  Failed   Back-off pulling image "someimage:latest"
+```
+
+**Diagnosis:**
+```bash
+# Check if image exists for ARM
+kubectl describe pod <pod-name> | grep -A5 "Events"
+```
+
+**Solution:** Find ARM-compatible alternative or build multi-arch image
+
+---
+
+### Issue: Verify cluster is running on ARM64
+
+**Command:**
+```bash
+kubectl describe node | grep Architecture
+```
+
+**Expected output:**
+```
+Architecture: arm64
+```
+
+---
+
+### ARM64 Safe Images Reference
+
+| Component | Image | ARM64 Support |
+|-----------|-------|---------------|
+| Calico | calico/* | ✅ Multi-arch |
+| MetalLB | metallb/* | ✅ Multi-arch |
+| NGINX Ingress | ingress-nginx/* | ✅ Multi-arch |
+| cert-manager | cert-manager/* | ✅ Multi-arch |
+| CoreDNS | coredns/coredns | ✅ Multi-arch |
+| etcd | etcd-io/etcd | ✅ Multi-arch |
+
+---
+
 ## Emergency Recovery
 
 ### Full Cluster Reset
@@ -463,6 +547,10 @@ sudo rm -rf /var/lib/etcd
 # Restart container runtime
 sudo systemctl restart containerd
 
-# Re-run install script
+# Re-run install script (choose based on architecture)
+# For x86_64:
 ./scripts/install-kubeadm.sh
+
+# For ARM64:
+./scripts/install-kubeadm-arm64.sh
 ```

@@ -6,18 +6,61 @@ This directory contains automation scripts for deploying and managing the Kubern
 
 ## Scripts
 
-### install-kubeadm.sh
+| Script | Architecture | Purpose |
+|--------|--------------|---------|
+| `install-kubeadm.sh` | x86_64 (amd64) | Full cluster installation |
+| `install-kubeadm-arm64.sh` | ARM64 (aarch64) | Full cluster installation for ARM |
+| `start-k8s-tunnel.sh` | Any | SSH tunnel for kubectl access |
 
-**Purpose:** Full cluster installation on a single VM
+---
+
+### install-kubeadm.sh (x86_64)
+
+**Purpose:** Full cluster installation on a single x86_64 VM
 
 **Usage:**
 ```bash
-# On the VM
+# On the VM (x86_64)
 chmod +x install-kubeadm.sh
 ./install-kubeadm.sh
 ```
 
-**What it does:**
+---
+
+### install-kubeadm-arm64.sh (ARM64)
+
+**Purpose:** Full cluster installation on a single ARM64 VM
+
+**Supported Platforms:**
+- AWS Graviton (c6g, c7g, t4g, m6g, r6g)
+- Ampere Altra
+- Oracle ARM (A1 instances)
+- Raspberry Pi 4/5 (Ubuntu Server 22.04+)
+- Any linux/arm64 VM
+
+**Usage:**
+```bash
+# On the ARM VM
+chmod +x install-kubeadm-arm64.sh
+./install-kubeadm-arm64.sh
+```
+
+**ARM-Specific Notes:**
+- All container images used are multi-arch (linux/arm64 + linux/amd64)
+- Script validates architecture before running
+- Same Kubernetes packages (ARM-native binaries from pkgs.k8s.io)
+
+**Verify ARM64:**
+```bash
+kubectl describe node | grep Architecture
+# Should show: Architecture: arm64
+```
+
+---
+
+### Common Configuration (Both Install Scripts)
+
+**What they do:**
 1. Configures OS (hostname, swap, kernel modules, sysctl)
 2. Installs containerd with systemd cgroups
 3. Installs kubeadm, kubelet, kubectl
@@ -32,7 +75,7 @@ chmod +x install-kubeadm.sh
 **Configuration Variables:**
 ```bash
 K8S_VERSION="v1.35"           # Kubernetes version
-HOSTNAME="k8s-single"          # Node hostname
+HOSTNAME="k8s-single"          # Node hostname (k8s-arm for ARM)
 POD_CIDR="192.168.0.0/16"      # Pod network CIDR
 METALLB_POOL="10.0.0.200-10.0.0.210"  # LoadBalancer IPs
 ```
