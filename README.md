@@ -4,7 +4,7 @@ A production-shaped Kubernetes cluster using **kubeadm** on a single VM, with al
 
 ## 📋 Overview
 
-This repository contains scripts and documentation for deploying a **real kubeadm-based Kubernetes cluster** (not k3s/minikube) with:
+This repository contains scripts and documentation for deploying a **real kubeadm-based Kubernetes cluster** with:
 
 - **Kubernetes v1.35** via kubeadm
 - **containerd** runtime
