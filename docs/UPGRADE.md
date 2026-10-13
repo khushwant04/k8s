@@ -201,7 +201,7 @@ kubectl uncordon worker-1
 kubectl get deployment -n kube-system calico-kube-controllers -o jsonpath='{.spec.template.spec.containers[0].image}'
 
 # Upgrade (check latest version at projectcalico.docs.tigera.io)
-kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.28.0/manifests/calico.yaml
+kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.32.2/manifests/calico.yaml
 ```
 
 ### MetalLB
@@ -211,7 +211,7 @@ kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.28.0/
 kubectl get deployment -n metallb-system controller -o jsonpath='{.spec.template.spec.containers[0].image}'
 
 # Upgrade
-kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.15.0/config/manifests/metallb-native.yaml
+kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.15.3/config/manifests/metallb-native.yaml
 ```
 
 ### NGINX Ingress
@@ -220,8 +220,8 @@ kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.15.0/confi
 # Check current version
 kubectl get deployment -n ingress-nginx ingress-nginx-controller -o jsonpath='{.spec.template.spec.containers[0].image}'
 
-# Upgrade
-kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/cloud/deploy.yaml
+# Upgrade (v1.15.1 is the final release; ingress-nginx was retired in March 2026)
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.15.1/deploy/static/provider/cloud/deploy.yaml
 ```
 
 ## Rollback Procedures
@@ -286,10 +286,13 @@ kubectl get --raw /metrics | grep apiserver_requested_deprecated_apis
 
 | Version | Status | EOL |
 |---------|--------|-----|
-| v1.35 | Current | ~Dec 2026 |
-| v1.34 | Supported | ~Sep 2026 |
-| v1.33 | Maintenance | ~Jun 2026 |
-| v1.32 | End of Life | ❌ |
+| v1.37 | Supported | 2027-10-28 |
+| v1.36 | Supported | 2027-06-28 |
+| v1.35 | Supported (installed by the scripts) | 2027-02-28 |
+| v1.34 | Supported until EOL | 2026-10-27 |
+| v1.33 | End of Life | 2026-06-28 |
+
+Dates are from the upstream release schedule (kubernetes.io/releases); check there for changes.
 
 **Kubernetes supports the 3 most recent minor versions.**
 

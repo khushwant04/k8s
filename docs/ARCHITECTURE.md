@@ -148,19 +148,20 @@ This document describes the architecture of the kubeadm-based Kubernetes cluster
 ### Networking Add-ons
 
 #### Calico CNI
-- **Version**: v3.27.0
+- **Version**: v3.32.2
 - **Features**:
   - Pod networking (IPIP or VXLAN)
   - NetworkPolicy enforcement
   - BGP peering (optional)
 
 #### MetalLB
-- **Version**: v0.14.5
+- **Version**: v0.15.3
 - **Mode**: L2 (Layer 2)
 - **Purpose**: Provides LoadBalancer IPs on bare-metal/VMs
 - **⚠️ Limitation**: Not compatible with cloud networking (AWS VPC)
 
 #### ingress-nginx
+- **Version**: v1.15.1 (final release; the project was retired upstream in March 2026)
 - **Type**: Kubernetes Ingress Controller
 - **Features**:
   - Host-based routing
@@ -214,11 +215,11 @@ For production:
 
 | Component | Version | Notes |
 |-----------|---------|-------|
-| Kubernetes | v1.35.0 | LTS recommended |
+| Kubernetes | v1.35 | Upstream support ends 2027-02-28 (Kubernetes has no LTS releases) |
 | containerd | 1.7.x | Distro default |
-| Calico | v3.27.0 | Latest stable |
-| MetalLB | v0.14.5 | Latest stable |
-| ingress-nginx | latest | Main branch |
+| Calico | v3.32.2 | Tested upstream against Kubernetes 1.34-1.36 |
+| MetalLB | v0.15.3 | |
+| ingress-nginx | v1.15.1 | Retired upstream; plan a move to Gateway API |
 
 ## Certificate Architecture
 

@@ -2,18 +2,20 @@
 
 A production-shaped Kubernetes cluster using **kubeadm** on a single VM, with all the components you'd use in a real multi-node deployment.
 
-## 📋 Overview
+## Overview
 
 This repository contains scripts and documentation for deploying a **real kubeadm-based Kubernetes cluster** with:
 
-- **Kubernetes v1.35** via kubeadm
-- **containerd** runtime
-- **Calico** CNI (with NetworkPolicy support)
-- **MetalLB** LoadBalancer
-- **NGINX Ingress Controller** (hardened)
+- **Kubernetes v1.35** via kubeadm (packages from `pkgs.k8s.io`)
+- **containerd** runtime (systemd cgroups)
+- **Calico v3.32.2** CNI (with NetworkPolicy support)
+- **MetalLB v0.15.3** LoadBalancer (L2 mode)
+- **ingress-nginx v1.15.1** (ModSecurity + OWASP CRS enabled)
 - **Secure remote access** via SSH tunnel
 
-## 🏗️ Architecture
+Add-on versions are pinned at the top of each install script (`CALICO_VERSION`, `METALLB_VERSION`, `INGRESS_NGINX_VERSION`).
+
+## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -43,7 +45,7 @@ This repository contains scripts and documentation for deploying a **real kubead
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## 📁 Repository Structure
+## Repository Structure
 
 ```
 k8s/
@@ -70,7 +72,7 @@ k8s/
     └── MIGRATION-TO-MANAGED.md       # Migration to EKS/GKE/AKS
 ```
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -98,7 +100,7 @@ k8s/
 ssh ubuntu@<VM_PUBLIC_IP>
 
 # Clone or copy the scripts
-git clone <repo> && cd k8s
+git clone https://github.com/khushwant04/k8s.git && cd k8s
 
 # Run the installation (choose based on architecture)
 # For x86_64:
@@ -119,11 +121,12 @@ ssh ubuntu@<VM_PUBLIC_IP> "sudo cat /etc/kubernetes/admin.conf" > ~/kubeadm.conf
 # Edit server address to localhost
 sed -i 's|server:.*|server: https://127.0.0.1:6443|' ~/kubeadm.conf
 
-# Start SSH tunnel
-bash scripts/start-k8s-tunnel.sh
+# Start SSH tunnel (set REMOTE_HOST / K8S_API_PRIVATE_IP / KEY_PATH for your VM,
+# or edit the defaults at the top of the script)
+REMOTE_HOST=<VM_PUBLIC_IP> K8S_API_PRIVATE_IP=<VM_PRIVATE_IP> bash scripts/start-k8s-tunnel.sh
 
 # Test connection (with TLS server name for cert validation)
-kubectl --kubeconfig=~/kubeadm.conf --tls-server-name=10.0.129.132 get nodes
+kubectl --kubeconfig ~/kubeadm.conf --tls-server-name=10.0.129.132 get nodes
 ```
 
 ### 3. Make it Permanent
@@ -142,7 +145,7 @@ kubectl config set-cluster kubernetes \
 kubectl get nodes
 ```
 
-## ✅ Verification
+## Verification
 
 ```bash
 # Cluster nodes
@@ -158,7 +161,7 @@ curl http://hello.local  # (after adding /etc/hosts entry)
 # Expected: "hello from kubeadm"
 ```
 
-## 🔒 Security Highlights
+## Security Highlights
 
 - **Private API Server**: Not exposed publicly (6443 not in security group)
 - **SSH Tunnel Access**: Secure, auditable, revocable
@@ -166,7 +169,7 @@ curl http://hello.local  # (after adding /etc/hosts entry)
 - **Hardened Ingress**: ModSecurity + OWASP CRS enabled
 - **NetworkPolicies**: Calico CNI supports policy enforcement
 
-## 📚 Documentation
+## Documentation
 
 | Document | Description |
 |----------|-------------|
@@ -186,7 +189,7 @@ curl http://hello.local  # (after adding /etc/hosts entry)
 | [scripts/README.md](scripts/README.md) | Main scripts overview |
 | [scripts/expansion/README.md](scripts/expansion/README.md) | Cluster expansion workflow |
 
-## 🔄 Upgrade Path
+## Upgrade Path
 
 This single-node setup is designed to evolve:
 
@@ -197,15 +200,16 @@ This single-node setup is designed to evolve:
 
 All manifests and configurations will carry forward without rewriting.
 
-## ⚠️ Limitations
+## Limitations
 
 | Limitation | Impact | Mitigation |
 |------------|--------|------------|
 | Single control plane | No HA | Expand to 3 nodes for production |
 | MetalLB L2 mode | AWS incompatible | Replace with NLB for AWS |
 | Self-signed TLS | Browser warnings | Add cert-manager + Let's Encrypt |
+| ingress-nginx retired upstream (March 2026) | No further releases or security fixes | Migrate to a Gateway API implementation |
 
-## 📞 Support
+## Support
 
 For issues with this setup:
 1. Check [TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)

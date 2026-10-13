@@ -406,7 +406,7 @@ ssh ubuntu@<LB_IP_OR_CP1> "sudo cat /etc/kubernetes/admin.conf" > ~/kubeadm-ha.c
 sed -i 's|server:.*|server: https://127.0.0.1:6443|' ~/kubeadm-ha.conf
 
 # Use with TLS server name
-kubectl --kubeconfig=~/kubeadm-ha.conf --tls-server-name=k8s-api.example.com get nodes
+kubectl --kubeconfig ~/kubeadm-ha.conf --tls-server-name=k8s-api.example.com get nodes
 ```
 
 ---

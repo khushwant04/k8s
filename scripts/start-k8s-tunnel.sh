@@ -9,6 +9,7 @@
 #
 # Usage:
 #   bash start-k8s-tunnel.sh
+#   REMOTE_HOST=<vm-public-ip> K8S_API_PRIVATE_IP=<private-ip> bash start-k8s-tunnel.sh
 #
 # How it works:
 #   1. Opens SSH connection to the VM
@@ -20,7 +21,7 @@
 #   - VM public IP accessible from your network
 #
 # After starting:
-#   kubectl --kubeconfig=~/kubeadm.conf --tls-server-name=10.0.129.132 get nodes
+#   kubectl --kubeconfig ~/kubeadm.conf --tls-server-name=10.0.129.132 get nodes
 #
 # To stop tunnel:
 #   pkill -f "ssh.*6443"
@@ -29,28 +30,42 @@
 # Last Updated: January 2026
 #===============================================================================
 
-set -e
+set -euo pipefail
 
 ### =========================
 ### CONFIGURATION
 ### =========================
-# Update these values for your environment
+# Update these defaults for your environment, or override them with
+# environment variables of the same name.
 
-KEY_PATH="$HOME/ssh-keys/hx.pem"     # Path to SSH private key
-REMOTE_USER="ubuntu"                  # SSH user on VM
-REMOTE_HOST="13.201.92.125"           # VM public IP (update this!)
+KEY_PATH="${KEY_PATH:-$HOME/ssh-keys/hx.pem}"            # Path to SSH private key
+REMOTE_USER="${REMOTE_USER:-ubuntu}"                      # SSH user on VM
+REMOTE_HOST="${REMOTE_HOST:-13.201.92.125}"               # VM public IP (update this!)
 
 # Kubernetes API server details (from kubeadm init output)
-K8S_API_PRIVATE_IP="10.0.129.132"     # Private IP of the control plane
-K8S_API_PORT="6443"                   # API server port
-LOCAL_PORT="6443"                     # Local port to forward
+K8S_API_PRIVATE_IP="${K8S_API_PRIVATE_IP:-10.0.129.132}"  # Private IP of the control plane
+K8S_API_PORT="${K8S_API_PORT:-6443}"                      # API server port
+LOCAL_PORT="${LOCAL_PORT:-6443}"                          # Local port to forward
 
 ### =========================
 ### MAIN
 ### =========================
 
-# Check if tunnel already running
-if ss -lntp 2>/dev/null | grep -q ":${LOCAL_PORT}"; then
+if [[ ! -f "${KEY_PATH}" ]]; then
+    echo "SSH key not found: ${KEY_PATH} (set KEY_PATH)" >&2
+    exit 1
+fi
+
+# Check if the local port is already in use (ss on Linux, lsof on macOS)
+port_in_use() {
+    if command -v ss >/dev/null 2>&1; then
+        ss -lnt 2>/dev/null | awk '{print $4}' | grep -qE "[:.]${LOCAL_PORT}\$"
+    else
+        lsof -nP -iTCP:"${LOCAL_PORT}" -sTCP:LISTEN >/dev/null 2>&1
+    fi
+}
+
+if port_in_use; then
     echo "⚠️  Port ${LOCAL_PORT} already in use. Tunnel may be running."
     echo "   To kill existing tunnel: pkill -f 'ssh.*${LOCAL_PORT}'"
     exit 1
@@ -67,13 +82,13 @@ ssh -i "${KEY_PATH}" \
     -o ExitOnForwardFailure=yes \
     -o ServerAliveInterval=60 \
     -o ServerAliveCountMax=3 \
-    -L ${LOCAL_PORT}:${K8S_API_PRIVATE_IP}:${K8S_API_PORT} \
-    ${REMOTE_USER}@${REMOTE_HOST}
+    -L "${LOCAL_PORT}:${K8S_API_PRIVATE_IP}:${K8S_API_PORT}" \
+    "${REMOTE_USER}@${REMOTE_HOST}"
 
 echo "✅ Tunnel started successfully!"
 echo ""
 echo "📋 Next steps:"
-echo "   kubectl --kubeconfig=~/kubeadm.conf --tls-server-name=${K8S_API_PRIVATE_IP} get nodes"
+echo "   kubectl --kubeconfig ~/kubeadm.conf --tls-server-name=${K8S_API_PRIVATE_IP} get nodes"
 echo ""
 echo "🛑 To stop tunnel:"
 echo "   pkill -f 'ssh.*${LOCAL_PORT}'"

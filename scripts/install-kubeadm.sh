@@ -20,9 +20,9 @@
 # Components Installed:
 #   - Kubernetes v1.35 (kubeadm, kubelet, kubectl)
 #   - containerd runtime
-#   - Calico CNI v3.27.0
-#   - MetalLB v0.14.5
-#   - NGINX Ingress Controller
+#   - Calico CNI v3.32.2
+#   - MetalLB v0.15.3
+#   - ingress-nginx controller v1.15.1
 #
 # Author: Platform Team
 # Version: 1.0.0
@@ -41,6 +41,17 @@ HOSTNAME="k8s-single"          # Node hostname
 POD_CIDR="192.168.0.0/16"      # Pod network CIDR (Calico default)
 METALLB_POOL="10.0.0.200-10.0.0.210"  # LoadBalancer IP range
 
+# Add-on versions (pinned for reproducible installs)
+CALICO_VERSION="v3.32.2"       # tested by Calico against Kubernetes 1.34-1.36
+METALLB_VERSION="v0.15.3"
+INGRESS_NGINX_VERSION="v1.15.1" # final ingress-nginx release (project retired March 2026)
+HTTP_ECHO_IMAGE="hashicorp/http-echo:1.0.0"  # multi-arch (amd64 + arm64)
+
+if [[ "$(uname -m)" != "x86_64" ]]; then
+  echo "This script is for x86_64. On ARM64 use install-kubeadm-arm64.sh" >&2
+  exit 1
+fi
+
 ### =========================
 echo "[1/11] OS preparation"
 ### =========================
@@ -48,6 +59,11 @@ sudo hostnamectl set-hostname "${HOSTNAME}"
 
 sudo swapoff -a
 sudo sed -i '/ swap / s/^/#/' /etc/fstab
+
+cat <<EOF | sudo tee /etc/modules-load.d/k8s.conf
+overlay
+br_netfilter
+EOF
 
 sudo modprobe overlay
 sudo modprobe br_netfilter
@@ -63,8 +79,8 @@ sudo sysctl --system
 ### =========================
 echo "[2/11] Install containerd"
 ### =========================
-sudo apt update
-sudo apt install -y containerd
+sudo apt-get update
+sudo apt-get install -y containerd
 
 sudo mkdir -p /etc/containerd
 containerd config default | sudo tee /etc/containerd/config.toml >/dev/null
@@ -76,17 +92,17 @@ sudo systemctl enable containerd
 ### =========================
 echo "[3/11] Install Kubernetes binaries"
 ### =========================
-sudo apt install -y apt-transport-https ca-certificates curl gpg
+sudo apt-get install -y apt-transport-https ca-certificates curl gpg
 sudo mkdir -p /etc/apt/keyrings
 
-curl -fsSL https://pkgs.k8s.io/core:/stable:/${K8S_VERSION}/deb/Release.key \
- | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+curl -fsSL "https://pkgs.k8s.io/core:/stable:/${K8S_VERSION}/deb/Release.key" \
+ | sudo gpg --dearmor --yes -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
 
 echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/${K8S_VERSION}/deb/ /" \
  | sudo tee /etc/apt/sources.list.d/kubernetes.list
 
-sudo apt update
-sudo apt install -y kubeadm kubelet kubectl
+sudo apt-get update
+sudo apt-get install -y kubeadm kubelet kubectl
 sudo apt-mark hold kubeadm kubelet kubectl
 sudo systemctl enable --now kubelet
 
@@ -100,15 +116,16 @@ sudo kubeadm init \
 ### =========================
 echo "[5/11] kubectl access"
 ### =========================
-mkdir -p $HOME/.kube
-sudo cp /etc/kubernetes/admin.conf $HOME/.kube/config
-sudo chown $(id -u):$(id -g) $HOME/.kube/config
+mkdir -p "$HOME/.kube"
+sudo cp /etc/kubernetes/admin.conf "$HOME/.kube/config"
+sudo chown "$(id -u):$(id -g)" "$HOME/.kube/config"
 
 ### =========================
 echo "[6/11] Install Calico CNI"
 ### =========================
-kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.27.0/manifests/calico.yaml
-kubectl wait --for=condition=Ready pods -l k8s-app=calico-node -n kube-system --timeout=180s
+kubectl apply -f "https://raw.githubusercontent.com/projectcalico/calico/${CALICO_VERSION}/manifests/calico.yaml"
+# rollout status waits for the DaemonSet pods to exist; "kubectl wait" fails if they are not created yet
+kubectl -n kube-system rollout status daemonset/calico-node --timeout=300s
 
 ### =========================
 echo "[7/11] Allow scheduling on control plane (single-node only)"
@@ -118,9 +135,11 @@ kubectl taint nodes --all node-role.kubernetes.io/control-plane- || true
 ### =========================
 echo "[8/11] Install MetalLB"
 ### =========================
-kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.14.5/config/manifests/metallb-native.yaml
-sleep 40
+kubectl apply -f "https://raw.githubusercontent.com/metallb/metallb/${METALLB_VERSION}/config/manifests/metallb-native.yaml"
+# The IPAddressPool is validated by the MetalLB webhook, so wait for the controller first
+kubectl -n metallb-system rollout status deployment/controller --timeout=180s
 
+apply_metallb_config() {
 cat <<EOF | kubectl apply -f -
 apiVersion: metallb.io/v1beta1
 kind: IPAddressPool
@@ -137,17 +156,27 @@ metadata:
   name: l2
   namespace: metallb-system
 EOF
+}
+
+# Retry a few times: the webhook endpoint can lag the controller becoming Ready
+for attempt in 1 2 3 4 5 6; do
+  if apply_metallb_config; then break; fi
+  if [[ "${attempt}" -eq 6 ]]; then echo "MetalLB config failed" >&2; exit 1; fi
+  echo "MetalLB webhook not ready yet, retrying in 10s..."
+  sleep 10
+done
 
 ### =========================
 echo "[9/11] Install ingress-nginx"
 ### =========================
-kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/cloud/deploy.yaml
-kubectl wait -n ingress-nginx --for=condition=Ready pod \
-  -l app.kubernetes.io/component=controller --timeout=180s
+kubectl apply -f "https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-${INGRESS_NGINX_VERSION}/deploy/static/provider/cloud/deploy.yaml"
+kubectl -n ingress-nginx rollout status deployment/ingress-nginx-controller --timeout=300s
 
 ### =========================
 echo "[10/11] Harden ingress"
 ### =========================
+# Note: ingress-nginx was retired upstream in March 2026 (no further releases or
+# security fixes). For new clusters prefer a Gateway API implementation.
 cat <<EOF | kubectl apply -f -
 apiVersion: v1
 kind: ConfigMap
@@ -181,10 +210,17 @@ spec:
     spec:
       containers:
       - name: hello
-        image: hashicorp/http-echo
+        image: ${HTTP_ECHO_IMAGE}
         args: ["-text=hello from kubeadm"]
         ports:
         - containerPort: 5678
+        resources:
+          requests:
+            cpu: "50m"
+            memory: "64Mi"
+          limits:
+            cpu: "200m"
+            memory: "128Mi"
 ---
 apiVersion: v1
 kind: Service
@@ -241,10 +277,10 @@ echo "   2. Edit server address:"
 echo "      sed -i 's|server:.*|server: https://127.0.0.1:6443|' ~/kubeadm.conf"
 echo ""
 echo "   3. Start SSH tunnel (local machine):"
-echo "      bash start-k8s-tunnel.sh"
+echo "      bash scripts/start-k8s-tunnel.sh"
 echo ""
 echo "   4. Test kubectl (local machine):"
-echo "      kubectl --kubeconfig=~/kubeadm.conf --tls-server-name=$(hostname -I | awk '{print $1}') get nodes"
+echo "      kubectl --kubeconfig ~/kubeadm.conf --tls-server-name=$(hostname -I | awk '{print $1}') get nodes"
 echo ""
-echo "📚 Documentation: See docs/README.md"
+echo "📚 Documentation: See README.md and docs/"
 echo "============================================================"

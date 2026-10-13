@@ -98,7 +98,7 @@ configure_system() {
     
     # Disable swap
     swapoff -a
-    sed -i '/swap/d' /etc/fstab
+    sed -i '/\sswap\s/ s/^#*/#/' /etc/fstab  # comment out swap entries instead of deleting lines
     log_success "Swap disabled"
     
     # Load required kernel modules

@@ -34,17 +34,17 @@ log_info() {
 
 log_success() {
     echo -e "${GREEN}[PASS]${NC} $1"
-    ((CHECKS_PASSED++))
+    CHECKS_PASSED=$((CHECKS_PASSED + 1))  # not ((x++)): returns 1 when x=0 and trips set -e
 }
 
 log_warn() {
     echo -e "${YELLOW}[WARN]${NC} $1"
-    ((CHECKS_WARNED++))
+    CHECKS_WARNED=$((CHECKS_WARNED + 1))  # not ((x++)): returns 1 when x=0 and trips set -e
 }
 
 log_fail() {
     echo -e "${RED}[FAIL]${NC} $1"
-    ((CHECKS_FAILED++))
+    CHECKS_FAILED=$((CHECKS_FAILED + 1))  # not ((x++)): returns 1 when x=0 and trips set -e
 }
 
 check_header() {
@@ -140,7 +140,7 @@ check_core_dns() {
     
     # DNS resolution test
     log_info "Testing DNS resolution..."
-    if kubectl run dns-test --image=busybox:1.36 --rm -it --restart=Never --command -- nslookup kubernetes.default.svc.cluster.local &>/dev/null; then
+    if kubectl run dns-test --image=busybox:1.36 --rm -i --restart=Never --command -- nslookup kubernetes.default.svc.cluster.local &>/dev/null; then
         log_success "DNS resolution working"
     else
         log_warn "DNS resolution test inconclusive"

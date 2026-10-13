@@ -171,8 +171,9 @@ az aks create \
 # Context: managed cluster
 kubectl config use-context <managed-cluster>
 
-# Ingress Controller (or use cloud-native)
-kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/cloud/deploy.yaml
+# Ingress Controller (prefer the cloud's native controller or a Gateway API
+# implementation: ingress-nginx was retired upstream in March 2026)
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.15.1/deploy/static/provider/cloud/deploy.yaml
 
 # cert-manager
 kubectl apply -f https://github.com/cert-manager/cert-manager/releases/latest/download/cert-manager.yaml

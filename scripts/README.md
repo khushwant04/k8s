@@ -46,7 +46,7 @@ chmod +x install-kubeadm-arm64.sh
 ```
 
 **ARM-Specific Notes:**
-- All container images used are multi-arch (linux/arm64 + linux/amd64)
+- All container images used are multi-arch (linux/arm64 + linux/amd64); the test app uses `hashicorp/http-echo:1.0.0` because the older 0.2.x tags are amd64-only
 - Script validates architecture before running
 - Same Kubernetes packages (ARM-native binaries from pkgs.k8s.io)
 
@@ -78,6 +78,9 @@ K8S_VERSION="v1.35"           # Kubernetes version
 HOSTNAME="k8s-single"          # Node hostname (k8s-arm for ARM)
 POD_CIDR="192.168.0.0/16"      # Pod network CIDR
 METALLB_POOL="10.0.0.200-10.0.0.210"  # LoadBalancer IPs
+CALICO_VERSION="v3.32.2"       # Pinned add-on versions
+METALLB_VERSION="v0.15.3"
+INGRESS_NGINX_VERSION="v1.15.1"
 ```
 
 **Duration:** ~5-10 minutes
@@ -90,8 +93,8 @@ METALLB_POOL="10.0.0.200-10.0.0.210"  # LoadBalancer IPs
 
 **Usage:**
 ```bash
-# On your local machine
-bash start-k8s-tunnel.sh
+# On your local machine (from the repo root)
+bash scripts/start-k8s-tunnel.sh
 ```
 
 **What it does:**
@@ -99,17 +102,20 @@ bash start-k8s-tunnel.sh
 2. Forwards local port 6443 to API server
 3. Runs in background
 
-**Configuration Variables:**
+**Configuration Variables** (edit the defaults in the script, or override via environment):
 ```bash
 KEY_PATH="$HOME/ssh-keys/hx.pem"     # SSH private key
 REMOTE_USER="ubuntu"                  # VM user
 REMOTE_HOST="13.201.92.125"           # VM public IP
 K8S_API_PRIVATE_IP="10.0.129.132"     # API server private IP
+
+# Example override:
+REMOTE_HOST=203.0.113.10 K8S_API_PRIVATE_IP=10.0.1.5 bash scripts/start-k8s-tunnel.sh
 ```
 
 **After running:**
 ```bash
-kubectl --kubeconfig=~/kubeadm.conf --tls-server-name=10.0.129.132 get nodes
+kubectl --kubeconfig ~/kubeadm.conf --tls-server-name=10.0.129.132 get nodes
 ```
 
 **Stop tunnel:**
@@ -138,7 +144,7 @@ sed -i 's|server:.*|server: https://127.0.0.1:6443|' ~/kubeadm.conf
 bash scripts/start-k8s-tunnel.sh
 
 # 5. Test
-kubectl --kubeconfig=~/kubeadm.conf --tls-server-name=10.0.129.132 get nodes
+kubectl --kubeconfig ~/kubeadm.conf --tls-server-name=10.0.129.132 get nodes
 ```
 
 ### Daily Usage

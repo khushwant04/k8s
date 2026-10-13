@@ -152,8 +152,8 @@ calico-node-xxxxx   0/1     Init:CrashLoopBackOff
 
 2. **Delete and reinstall**
    ```bash
-   kubectl delete -f https://raw.githubusercontent.com/projectcalico/calico/v3.27.0/manifests/calico.yaml
-   kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.27.0/manifests/calico.yaml
+   kubectl delete -f https://raw.githubusercontent.com/projectcalico/calico/v3.32.2/manifests/calico.yaml
+   kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.32.2/manifests/calico.yaml
    ```
 
 ---
